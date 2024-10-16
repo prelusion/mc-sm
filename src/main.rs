@@ -1,17 +1,22 @@
 use bevy::{prelude::*, math::vec3};
 use std::f32::consts::PI;
 
+mod cam;
 
 const PLAYER_START_Y: f32 = 0.0;
 const PLAYER_SIZE: Vec3 = Vec3::new(2.0, 2.0, 2.0);
 const PLAYER_COLOR: Color = Color::rgb(0.3, 0.3, 0.7);
 
 fn main() {
-    App::new()
-        .add_plugins(DefaultPlugins)
+    let app = App::new()
+        .add_plugins((DefaultPlugins))
         .add_systems(Startup, setup)
         .run();
+
+
 }
+
+
 
 #[derive(Component)]
 struct Player;
@@ -23,8 +28,9 @@ fn setup(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>, mut materials
         ..Default::default()
     });
 
-    let values: [f32; 3] = [2.2, 4.4, 6.6];
+    let values: [f32; 4] = [2.2, 4.4, 6.6, 8.8];
 
+    let test: [f32; 2] = [2.0, 4.0];
     for z in values {
         for x in values {
             //paddle
