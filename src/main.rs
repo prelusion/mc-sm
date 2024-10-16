@@ -1,18 +1,14 @@
 use bevy::{prelude::*, math::vec3};
-use std::f32::consts::PI;
-
-mod cam;
+use rand::Rng;
 
 const PLAYER_START_Y: f32 = 0.0;
-const PLAYER_SIZE: Vec3 = Vec3::new(2.0, 2.0, 2.0);
-const PLAYER_COLOR: Color = Color::rgb(0.3, 0.3, 0.7);
+const PLAYER_SIZE: Vec2 = Vec2::new(40.0, 40.0);
 
 fn main() {
-    let app = App::new()
-        .add_plugins((DefaultPlugins))
+    App::new()
+        .add_plugins(DefaultPlugins)
         .add_systems(Startup, setup)
         .run();
-
 
 }
 
@@ -21,33 +17,25 @@ fn main() {
 #[derive(Component)]
 struct Player;
 
-fn setup(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>, mut materials: ResMut<Assets<StandardMaterial>>, asset_server: Res<AssetServer>) {
+fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     //camera
-    commands.spawn(Camera3dBundle {
-        transform: Transform::from_xyz(0.0, 5.0, 10.0).looking_at(Vec3::ZERO, Vec3::Y),
-        ..Default::default()
-    });
+    let mut rng = rand::thread_rng();
+    commands.spawn(Camera2dBundle::default());
 
-    let values: [f32; 4] = [2.2, 4.4, 6.6, 8.8];
-
-    let test: [f32; 2] = [2.0, 4.0];
+    let values: [f32; 5] = [40., 80., 120., 160., 200.];
     for z in values {
         for x in values {
-            //paddle
             commands.spawn((
-                PbrBundle {
+                SpriteBundle {
                     transform: Transform {
-                        translation: vec3(4. - x, PLAYER_START_Y, 4. - z - z),
-                        rotation: Quat::from_rotation_x(-PI / 8.),
-                        scale: PLAYER_SIZE,
+                        translation: vec3(0. - x, PLAYER_START_Y - z, 0. - x),
                         ..default()
                     },
-                    mesh: meshes.add(Cuboid::default()),
-                    material: materials.add(StandardMaterial {
-                        base_color:PLAYER_COLOR,
-                        ..Default::default()
-                    }),
-                
+                    sprite: Sprite {
+                        color: Color::rgb(rng.gen_range(0.0..40.0), rng.gen_range(0.0..255.0), rng.gen_range(0.0..255.0)),
+                        custom_size: Some(PLAYER_SIZE),
+                        ..default()
+                    },
                     ..default()
                 },
                 Player,
