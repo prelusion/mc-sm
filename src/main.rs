@@ -12,14 +12,55 @@ fn main() {
         .insert_resource(cam::CameraVelocity::default())
         .add_plugins(DefaultPlugins)
         .add_event::<BoardModifiedEvent>()
+        .add_event::<AddTileEvent>()
         .add_systems(Startup, (setup))
-        .add_systems(Update, (generateBoard, drawBoard, cam::keyboard_input, move_camera, handle_space_key))
+        .add_systems(Update, (generateBoard, drawBoard, cam::keyboard_input, move_camera, trigger_tile_addition))
+        .add_systems(PostUpdate, add_tile_system)
         .run();
 
 }
 
 #[derive(Event)]
 pub struct BoardModifiedEvent;
+
+#[derive(Event)]
+pub struct AddTileEvent {
+    pub x: f32,
+    pub y: f32,
+}
+
+fn add_tile_system(
+    mut commands: Commands, 
+    mut add_tile_event: EventReader<AddTileEvent>,  // Listen for tile add events
+    mut board_query: Query<&mut Board>,
+    mut ev_board_modified: EventWriter<BoardModifiedEvent>,  // To trigger redraw
+) {
+    if let Ok(mut board) = board_query.get_single_mut() {
+        for event in add_tile_event.read() {
+            info!("Add Tile System:");
+            // Add the new tile to the board
+            let new_tile = Tile { x: event.x, y: event.y };
+            board.tiles.push(new_tile);
+        }
+        info!("new board ev");
+        // Trigger a redraw event after the board has been modified
+        ev_board_modified.send(BoardModifiedEvent);
+    }
+}
+
+fn trigger_tile_addition(mut ev_add_tile: EventWriter<AddTileEvent>, keyboard_input: Res<ButtonInput<KeyCode>>) {
+    // Example: Add a tile when the user presses the spacebar
+    if keyboard_input.just_pressed(KeyCode::Space) {
+        info!("key pressed for adding tile: {:?}", keyboard_input);
+        // Generate a random position for the new tile
+        let x = rand::thread_rng().gen_range(0.0,(GRID_WIDTH as f32 * TILE_SIZE));
+        let y = rand::thread_rng().gen_range(0.0,(GRID_HEIGHT as f32 * TILE_SIZE));
+
+        // Send the event to add a new tile
+        ev_add_tile.send(AddTileEvent { x, y });
+    }
+}
+
 
 
 fn setup(mut commands: Commands, mut ev_board_modified: EventWriter<BoardModifiedEvent>) {
@@ -86,42 +127,6 @@ fn generateBoard(mut commands: Commands, mut ev_board_modified: EventWriter<Boar
 }
 
 
-fn handle_space_key(
-    keyboard_input: Res<ButtonInput<KeyCode>>,
-    mut commands: Commands,
-    mut ev_board_modified: EventWriter<BoardModifiedEvent>,
-    mut board_query: Query<&mut Board>,
-) {
-    // Check if the space key is pressed
-    if keyboard_input.just_pressed(KeyCode::Space) {
-        // Access the board and its current tiles
-        if let Ok(mut board) = board_query.get_single_mut() {
-            let mut rng = rand::thread_rng();
-            let mut new_tile_position: Option<(f32, f32)> = None;
-
-            // Try to find an empty position for the new tile
-            loop {
-                let x = rng.gen_range(0, GRID_WIDTH) as f32 * TILE_SIZE;
-                let y = rng.gen_range(0, GRID_HEIGHT) as f32 * TILE_SIZE;
-
-                // Check if the tile already exists at the generated position
-                if !board.tiles.iter().any(|tile| tile.x == x && tile.y == y) {
-                    new_tile_position = Some((x, y));
-                    break;
-                }
-            }
-
-            // If a valid new tile position is found, add the tile
-            if let Some((x, y)) = new_tile_position {
-                board.tiles.push(Tile { x, y });
-                ev_board_modified.send(BoardModifiedEvent);  // Trigger the event to update the board
-            }
-        }
-    }
-}
-
-
-
 fn drawBoard(
     mut commands: Commands, 
     mut ev_board_modified: EventReader<BoardModifiedEvent>,  // EventReader for BoardModifiedEvent
@@ -129,23 +134,20 @@ fn drawBoard(
     asset_server: Res<AssetServer>,
 ) {
     let mut rng = rand::thread_rng();
-
-    // Use `iter` on the EventReader to process each event
-    for _event in ev_board_modified.read() {  // Corrected: Use `iter()` to iterate over events
+    for _event in ev_board_modified.read() { 
         // Get the board data
         if let Ok(board) = board_query.get_single() {
             // Clear existing tiles (if necessary) - Optionally add logic to remove existing tiles before redrawing.
             
-            // Spawn the tiles as individual entities with SpriteBundles
             for tile in &board.tiles {
                 commands.spawn((
                     SpriteBundle {
                         transform: Transform {
-                            translation: Vec3::new(tile.x, tile.y, 0.0),  // Place the tile in the correct position
+                            translation: Vec3::new(tile.x, tile.y, 0.0),
                             ..default()
                         },
                         sprite: Sprite {
-                            custom_size: Some(Vec2::new(TILE_SIZE, TILE_SIZE)),  // Set tile size
+                            custom_size: Some(Vec2::new(TILE_SIZE, TILE_SIZE)),
                             color: Color::rgb(
                                 rng.gen_range(0.0, 1.0), 
                                 rng.gen_range(0.0, 1.0), 
@@ -160,52 +162,3 @@ fn drawBoard(
         }
     }
 }
-
-
-
-
-
-// fn board(mut commands: Commands, asset_server: Res<AssetServer>) {
-//     //camera
-//     let mut rng = rand::thread_rng();
-
-//     let mut tiles = Vec::new();
-
-//     // Generate a 10x10 grid of tiles, each with a size of TILE_SIZE
-//     for row in 0..GRID_HEIGHT {
-//         for col in 0..GRID_WIDTH {
-//             // Calculate the tile positions based on the index
-//             let x = col as f32 * TILE_SIZE;
-//             let y = row as f32 * TILE_SIZE;
-
-//             // Add the tile to the tiles Vec
-//             tiles.push(Tile { x, y });
-//         }
-//     }
-
-//     // Spawn the tiles as individual entities with SpriteBundles
-//     for tile in &tiles {
-//         commands.spawn((
-//             SpriteBundle {
-//                 transform: Transform {
-//                     translation: Vec3::new(tile.x, tile.y, 0.0),  // Place the tile in the correct position
-//                     ..default()
-//                 },
-//                 sprite: Sprite {
-//                     custom_size: Some(Vec2::new(TILE_SIZE, TILE_SIZE)),  // Set tile size
-//                     color: Color::rgb(
-//                         rng.gen_range(0.0, 1.0), 
-//                         rng.gen_range(0.0, 1.0), 
-//                         rng.gen_range(0.0, 1.0),
-//                     ), 
-//                     ..default()
-//                 },
-//                 ..default()
-//             },
-//         ));
-//     }
-
-//     // Create the Board and insert it into the entity (after spawning tiles)
-//     let board = Board { tiles };
-//     commands.spawn_empty().insert(board);
-// }

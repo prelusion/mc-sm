@@ -27,7 +27,7 @@ pub fn keyboard_input(
     for key in keys.get_just_pressed() {
         info!("key pressed: {:?}", key);
         if let Some(velocity) = key_velocity_map.get(key) {
-            camera_velocity.velocity += *velocity;  // Add velocity when key is pressed
+            camera_velocity.velocity += *velocity;
         }
     }
 
@@ -35,7 +35,7 @@ pub fn keyboard_input(
     for key in keys.get_just_released() {
         info!("key released: {:?}", key);
         if let Some(velocity) = key_velocity_map.get(key) {
-            camera_velocity.velocity -= *velocity;  // Subtract velocity when key is released
+            camera_velocity.velocity -= *velocity;
         }
     }
 }
